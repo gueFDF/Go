@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 func Fib(n int) (value int) {
@@ -286,8 +288,7 @@ func (r *Page) Load(filename string) {
 	r.Body = []byte(str)
 }
 
-
-//解析命令行参数
+// 解析命令行参数
 var NewLine = flag.Bool("n", false, "print newline") // echo -n flag, of type *bool
 
 const (
@@ -309,4 +310,96 @@ func Test_echo() {
 		s += flag.Arg(i)
 	}
 	os.Stdout.WriteString(s)
+}
+
+var wg sync.WaitGroup
+
+func Test_gre() {
+
+	for i := 0; i < 10; i++ {
+		wg.Add(1) // 启动一个goroutine就登记+1
+		go func(j int) {
+			defer wg.Done()
+			fmt.Println("Hello Goroutine!", j)
+			time.Sleep(time.Second)
+		}(i)
+	}
+	wg.Wait() // 等待所有登记的goroutine都结束
+}
+
+// channel 练习
+func Test_chan() {
+	sig := make(chan int)
+	ch1 := make(chan int)
+	ch2 := make(chan int)
+	// 开启goroutine将0~100的数发送到ch1中
+	go func() {
+
+		fmt.Println("进入阻塞")
+		sig <- 1
+		fmt.Println("被唤醒")
+		x := 100
+		for i := 0; i < x; i++ {
+			ch1 <- i
+		}
+		close(ch1)
+	}()
+	// 开启goroutine从ch1中接收值，并将该值的平方发送到ch2中
+	go func() {
+		time.Sleep(time.Second)
+		fmt.Println("唤醒生产者")
+		<-sig
+		for {
+			i, ok := <-ch1 // 通道关闭后再取值ok=false
+			if !ok {
+				break
+			}
+			ch2 <- i * i
+		}
+		close(ch2)
+	}()
+	// 在主goroutine中从ch2中接收值打印
+
+	for i := range ch2 { // 通道关闭后会退出for range循环
+
+		fmt.Println(i)
+	}
+}
+
+
+
+
+// 实现素数筛子
+func filter(p1 chan int, p2 chan int, pp int) {
+	for v:= range p1 {
+		if v%2!=0 {
+			p2<-v
+		}
+	}
+	close(p2)
+}
+
+func Test_prime() {
+	ch := make(chan int)
+
+	//将所有数写入管道
+	go func(Ch chan int) {
+		for i := 2; i <= 100; i++ {
+			Ch <- i
+		}
+		//写入-1表示写入结束
+		close(Ch)
+	}(ch)
+
+	//进行筛选
+	for {
+		prime ,ok:= <-ch
+		if !ok {
+			break
+		}
+		fmt.Printf("%d ", prime)
+		ch2 := make(chan int)
+		go filter(ch, ch2, prime)
+		ch = ch2
+	}
 }
