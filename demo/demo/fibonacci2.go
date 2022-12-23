@@ -1,10 +1,14 @@
 package demo
 
 import (
+	"bufio"
+	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"math"
 	"math/big"
+	"os"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -146,11 +150,163 @@ func Test_big() {
 	fmt.Printf("Big Rat: %v\n", rq)
 }
 
-type test_car interface {
-	start()
+type Test_car interface {
+	Start()
+}
+
+type Car struct {
+	Name string
+}
+
+func (p *Car) Start() {
+	fmt.Println(p.Name)
+}
+
+func (p *Car) End() {
+	fmt.Println(p.Name)
+}
+
+type Person struct {
+	Name string
+	Age  int
+}
+
+// 类型的String方法,用来自定义打印格式，调用打印函数时会自动调用
+func (p *Person) String() string {
+	return p.Name + strconv.Itoa(p.Age)
+}
+
+/*
+Go 开发者不需要写代码来释放程序中不再使用的变量和结构占用的内存，在 Go 运行时中有一个独立的进程，即垃圾收集器 (GC)，
+会处理这些事情，它搜索不再使用的变量然后释放它们的内存。可以通过 runtime 包访问 GC 进程。
+
+通过调用 runtime.GC() 函数可以显式的触发 GC，但这只在某些罕见的场景下才有用，
+比如当内存资源不足时调用 runtime.GC()，它会在此函数执行的点上立即释放一大片内存，
+此时程序可能会有短时的性能下降（因为 GC 进程在执行）
+*/
+
+/*如果需要在一个对象 obj 被从内存移除前执行一些特殊操作，比如写到日志文件中，可以通过如下方式调用函数来实现：
+
+runtime.SetFinalizer(obj, func(obj *typeObj))
+*/
+
+//利用空接口实现一个stack
+
+type Stack []interface{}
+
+func (p Stack) Len() int {
+	return len(p)
+}
+
+func (p Stack) Cap() int {
+	return cap(p)
+}
+
+func (p Stack) IsEmpty() bool {
+	return len(p) == 0
+}
+
+func (p *Stack) Push(e interface{}) {
+	*p = append(*p, e)
+}
+func (p Stack) Top() (interface{}, error) {
+	if len(p) == 0 {
+		return nil, errors.New("stack is empty")
+	}
+	return p[len(p)-1], nil
+}
+func (p *Stack) Pop() (interface{}, error) {
+	stk := *p
+	if len(stk) == 0 {
+		return nil, errors.New("stack is enpty")
+	}
+
+	top := stk[len(stk)-1]
+	*p = stk[:len(stk)-1]
+	return top, nil
+}
+
+func Test_Reader() {
+	nchars, nwords, nlines := 0, 0, 0
+	inputPeader := bufio.NewReader(os.Stdin)
+
+	for {
+		input, err := inputPeader.ReadString('\n')
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		if input == "S\n" {
+			fmt.Printf("%d %d %d \n", nchars, nwords, nlines)
+			os.Exit(0)
+		} else {
+			nchars += len(input) - 1
+			nwords = len(strings.Fields(input))
+			nlines++
+		}
+	}
+
+}
+
+//读写文件练习
+
+type Page struct {
+	Title string
+	Body  []byte
+}
+
+func (w *Page) Save() {
+	f, err := os.OpenFile(w.Title, os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		fmt.Println(err)
+		fmt.Println("save")
+		os.Exit(0)
+	}
+
+	defer f.Close()
+	inputWriter := bufio.NewWriter(f)
+
+	inputWriter.WriteString(string(w.Body))
+	fmt.Println(string(w.Body))
+
+	inputWriter.Flush()
+}
+
+func (r *Page) Load(filename string) {
+	f, err := os.Open(filename)
+
+	if err != nil {
+		fmt.Println(err)
+		fmt.Println("load")
+		os.Exit(0)
+	}
+	defer f.Close()
+	outputReader := bufio.NewReader(f)
+	str, _ := outputReader.ReadString('\n')
+	r.Body = []byte(str)
 }
 
 
-type Car struct {
-	test_car
+//解析命令行参数
+var NewLine = flag.Bool("n", false, "print newline") // echo -n flag, of type *bool
+
+const (
+	Space   = " "
+	Newline = "\n"
+)
+
+func Test_echo() {
+	flag.PrintDefaults()
+	flag.Parse() // Scans the arg list and sets up flags
+	var s string = ""
+	for i := 0; i < flag.NArg(); i++ {
+		if i > 0 {
+			s += " "
+			if *NewLine { // -n is parsed, flag becomes true
+				s += Newline
+			}
+		}
+		s += flag.Arg(i)
+	}
+	os.Stdout.WriteString(s)
 }
