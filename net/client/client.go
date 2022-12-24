@@ -1,10 +1,9 @@
 package main
 
 import (
-	"bufio"
+	"Go/net/codec"
 	"fmt"
 	"net"
-	"os"
 	"strings"
 )
 
@@ -18,21 +17,26 @@ func main() {
 
 	defer conn.Close() //关闭连接
 
-	inputReader := bufio.NewReader(os.Stdin)
+	//inputReader := bufio.NewReader(os.Stdin)
+	inputinfo := "abcdefghijklmnopqrstuvwxyz"
 
 	for {
 		//读取用户输入
-		input,_:=inputReader.ReadString('\n')
+		//input,_:=inputReader.ReadString('\n')
 		//去掉\n
-		inputinfo:=strings.Trim(input,"\n")
+		//inputinfo:=strings.Trim(input,"\n")
 		//输入q就推出
-		if strings.ToUpper(inputinfo)=="Q" {
+		if strings.ToUpper(inputinfo) == "Q" {
 			return
 		}
-		_,err:=conn.Write([]byte(inputinfo))
+		msg,err:=codec.Encode(inputinfo)
+		if err!=nil{
+			return
+		}
+		_, err = conn.Write(msg)
 
-		if err!=nil {
-			return 
+		if err != nil {
+			return
 		}
 
 	}

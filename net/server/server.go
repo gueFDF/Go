@@ -1,6 +1,8 @@
 package main
 
 import (
+	"Go/net/codec"
+	"bufio"
 	"fmt"
 	"net"
 )
@@ -9,22 +11,26 @@ func work(fd net.Conn) {
 	defer fd.Close()
 
 	for {
-		//reader:=bufio.NewReader(fd)
+		reader := bufio.NewReader(fd)
 
-		var buf [1024]byte
+		//var buf [1024]byte
 
 		//接收客户端发来的消息
 		//n,err:=reader.Read(buf[:])
-
-		n, err := fd.Read(buf[:])
-
-		if err != nil {
-			fmt.Println("read from client err")
-			break
+		msg,err:=codec.Decode(reader)
+		if err!=nil {
+			return 
 		}
-		recvstr := string(buf[:n])
 
-		fmt.Println(recvstr)
+		//n, err := fd.Read(buf[:])
+
+		// if err != nil {
+		// 	fmt.Println("read from client err")
+		// 	break
+		// }
+		//recvstr := string(buf[:n])
+
+		fmt.Println(msg)
 
 	}
 
